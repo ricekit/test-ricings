@@ -1,0 +1,4 @@
+name: Simple Test Ricing
+description: A minimal test ricing to verify build functionality
+author: Josh Andrews
+base: ghcr.io/ricekit/ricekit/core:latest

@@ -1,0 +1,8 @@
+# Test the ricing build functionality of Ricekit using locally sourced configuration files.
+name: Local Ricing Build Test
+description: Test the ricing build functionality of Ricekit using locally sourced configuration files.
+author: Josh Andrews <public@joshandrews.xyz>
+source: .
+target: hyprland
+dependencies:
+    - waybar
