@@ -1,0 +1,80 @@
+name: Auto-Document commands.sh
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts.d/**'
+  pull_request:
+    paths:
+      - 'scripts.d/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  document:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Generate documentation
+        id: generate_docs
+        run: |
+          .github/scripts/generate-docs.sh profile.d
+      - name: Check for changes
+        id: check_changes
+        run: |
+          # Check if README.md exists in git or has changes
+          if git ls-files --error-unmatch README.md >/dev/null 2>&1; then
+            # File exists in git, check for changes
+            if git diff --quiet README.md; then
+              echo "changed=false" >> $GITHUB_OUTPUT 
+              echo "No changes to documentation"
+            else
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "Documentation has been updated"
+            fi
+          else
+            # File doesn't exist in git yet, check if it was created
+            if [[ -f README.md ]]; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "New documentation file created"
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "No documentation file generated"
+            fi
+          fi
+      
+      - name: Commit documentation
+        if: steps.check_changes.outputs.changed == 'true' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add README.md
+          git commit -m "docs: auto-update documentation [skip ci]"
+          git push
+      
+      - name: Comment on PR
+        if: steps.check_changes.outputs.changed == 'true' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const documentation = fs.readFileSync('README.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 📝 Auto-Generated Documentation Updated`
+            });
